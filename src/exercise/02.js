@@ -31,7 +31,7 @@ function asyncReducer(state, action) {
 function useSafeDispatch(dispatch) {
   const mountedRef = React.useRef(false)
 
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     mountedRef.current = true
     return function cleanup() {
       mountedRef.current = false
