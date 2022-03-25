@@ -28,8 +28,29 @@ function asyncReducer(state, action) {
   }
 }
 
-function useAsync(initialState, isMounted) {
-  const [state, dispatch] = React.useReducer(asyncReducer, {
+function useSafeDispatch(dispatch) {
+  const mountedRef = React.useRef(false)
+
+  React.useEffect(() => {
+    mountedRef.current = true
+    return function cleanup() {
+      mountedRef.current = false
+    }
+    // empty deps to make sure this is only called on mount and unmount
+  }, [])
+
+  return React.useCallback(
+    (...args) => {
+      if (mountedRef.current) {
+        dispatch(...args)
+      }
+    },
+    [dispatch],
+  )
+}
+
+function useAsync(initialState) {
+  const [state, unsafeDispatch] = React.useReducer(asyncReducer, {
     status: 'idle',
     data: null,
     error: null,
@@ -37,39 +58,33 @@ function useAsync(initialState, isMounted) {
     ...initialState,
   })
 
+  const dispatch = useSafeDispatch(unsafeDispatch)
+
   const run = React.useCallback(
     promise => {
       dispatch({type: 'pending'})
       promise.then(
         data => {
-          // if not mounted, don't update state
-          if (!isMounted.current) {
-            console.log('you did it whit')
-            return
-          }
           dispatch({type: 'resolved', data})
         },
         error => {
-          // if not mounted, don't update state
-          if (!isMounted.current) return
           dispatch({type: 'rejected', error})
         },
       )
     },
-    [isMounted],
+    [dispatch],
   )
 
   return {...state, run}
 }
 
 function PokemonInfo({pokemonName}) {
-  const isMounted = React.useRef(true)
   const {
     data: pokemon,
     status,
     error,
     run,
-  } = useAsync({status: pokemonName ? 'pending' : 'idle'}, isMounted)
+  } = useAsync({status: pokemonName ? 'pending' : 'idle'})
 
   React.useEffect(() => {
     if (!pokemonName) {
@@ -77,10 +92,6 @@ function PokemonInfo({pokemonName}) {
     }
     const pokemonPromise = fetchPokemon(pokemonName)
     run(pokemonPromise)
-
-    return function cleanup() {
-      isMounted.current = false
-    }
   }, [pokemonName, run])
 
   switch (status) {
