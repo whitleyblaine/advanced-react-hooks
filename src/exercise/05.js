@@ -22,8 +22,8 @@ const MessagesDisplay = React.forwardRef(function MessagesDisplay(
 
   React.useImperativeHandle(ref, () => {
     return {
-      scrollToTop: scrollToTop,
-      scrollToBottom: scrollToBottom,
+      scrollToTop,
+      scrollToBottom,
     }
   })
 
